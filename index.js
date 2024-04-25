@@ -35,8 +35,8 @@ async function run() {
 
     app.get("/allFoods", async (req, res) => {
       try {
-        const page = parseInt(req.query.page);
-        const limit = parseInt(req.query.limit);
+        const page = parseInt(req.query?.page);
+        const limit = parseInt(req.query?.limit);
         const skipIndex = (page - 1) * limit;
 
         const cursor = foodCollection.find().skip(skipIndex).limit(limit);
@@ -118,7 +118,7 @@ async function run() {
       }
     });
 
-    app.post("/addRequest", async (req, res) => {
+    app.post("/add-request", async (req, res) => {
       try {
         const requestedData = req.body;
         const result = await requestedCollection.insertOne(requestedData);
@@ -141,7 +141,7 @@ async function run() {
       }
     });
 
-    app.get("/manage-request/:id", async (req, res) => {
+    app.get("/pending-request/:id", async (req, res) => {
       try {
         const idx = req.params.id;
         let query = {};
@@ -155,7 +155,7 @@ async function run() {
       }
     });
 
-    app.put("/request-status/:id", async (req, res) => {
+    app.put("/requested-status/:id", async (req, res) => {
       try {
         const idx = req.params.id;
         const filter = { _id: new ObjectId(idx) };
@@ -177,7 +177,25 @@ async function run() {
       }
     });
 
-    app.delete("/my-request-food/:id", async (req, res) => {
+    app.put("/food-status/:id", async (req, res) => {
+      try {
+        const idx = req.params.id;
+        const filter = { _id: new ObjectId(idx) };
+        const options = { upsert: true };
+        const updatedStatus = req.body;
+        const updated = {
+          $set: {
+            food_status: updatedStatus.foodStatus,
+          },
+        };
+        const result = await foodCollection.updateOne(filter, updated, options);
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
+    app.delete("/my-request/:id", async (req, res) => {
       try {
         const idx = req.params.id;
         const query = { _id: new ObjectId(idx) };
