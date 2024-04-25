@@ -95,8 +95,8 @@ async function run() {
 
     app.put("/update-food/:id", async (req, res) => {
       try {
-        const getParamsId = req.params.id;
-        const filter = { _id: new ObjectId(getParamsId) };
+        const idx = req.params.id;
+        const filter = { _id: new ObjectId(idx) };
         const options = { upsert: true };
         const updatedFoodData = req.body;
         const updated = {
@@ -122,6 +122,55 @@ async function run() {
       try {
         const requestedData = req.body;
         const result = await requestedCollection.insertOne(requestedData);
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
+    app.get("/my-requested", async (req, res) => {
+      try {
+        let query = {};
+        if (req.query?.email) {
+          query = { user_email: req.query.email };
+        }
+        const result = await requestedCollection.find(query).toArray();
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
+    app.get("/manage-request/:id", async (req, res) => {
+      try {
+        const idx = req.params.id;
+        let query = {};
+        if (idx) {
+          query = { food_id: idx };
+        }
+        const result = await requestedCollection.find(query).toArray();
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
+    app.put("/request-status/:id", async (req, res) => {
+      try {
+        const idx = req.params.id;
+        const filter = { _id: new ObjectId(idx) };
+        const options = { upsert: true };
+        const updateStatus = req.body;
+        const updated = {
+          $set: {
+            status: updateStatus.newStatus,
+          },
+        };
+        const result = await requestedCollection.updateOne(
+          filter,
+          updated,
+          options
+        );
         res.send(result);
       } catch (err) {
         console.log(err);
