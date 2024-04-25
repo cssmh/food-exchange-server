@@ -177,6 +177,17 @@ async function run() {
       }
     });
 
+    app.delete("/my-request-food/:id", async (req, res) => {
+      try {
+        const idx = req.params.id;
+        const query = { _id: new ObjectId(idx) };
+        const result = await requestedCollection.deleteOne(query);
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
