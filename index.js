@@ -95,8 +95,7 @@ async function run() {
 
     app.put("/update-food/:id", async (req, res) => {
       try {
-        const idx = req.params.id;
-        const filter = { _id: new ObjectId(idx) };
+        const filter = { _id: new ObjectId(req.params?.id) };
         const options = { upsert: true };
         const updatedFoodData = req.body;
         const updated = {
@@ -109,6 +108,7 @@ async function run() {
             expired_time: updatedFoodData.expired_time,
             pickup_location: updatedFoodData.pickup_location,
             additional_notes: updatedFoodData.additional_notes,
+            food_status: updatedFoodData.food_status,
           },
         };
         const result = await foodCollection.updateOne(filter, updated, options);
@@ -171,6 +171,23 @@ async function run() {
           updated,
           options
         );
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
+    app.patch("/add-time/:id", async (req, res) => {
+      try {
+        const filter = { _id: new ObjectId(req.params?.id) };
+        const updated = {
+          $set: {
+            delivered_at: req.body.todayDateTime,
+          },
+        };
+        const result = await requestedCollection.updateOne(filter, updated, {
+          upsert: true,
+        });
         res.send(result);
       } catch (err) {
         console.log(err);
