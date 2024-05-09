@@ -3,13 +3,38 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-const app = express();
 require("dotenv").config();
+const app = express();
 const port = process.env.PORT || 5000;
 
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://foodshare-3bbc0.web.app",
+      "https://mealplaterz.netlify.app",
+    ],
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(cookieParser());
+
+const gateMan = async (req, res, next) => {
+  const token = req?.cookies?.token;
+  //   console.log(token);
+  if (!token) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+  jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
+    if (err) {
+      res.status(401).send({ message: "unauthorized access" });
+    } else {
+      req.decodedUser = decoded;
+      next();
+    }
+  });
+};
 
 // mongo code
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.vvrohrj.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -32,6 +57,32 @@ async function run() {
     const requestedCollection = client
       .db("mealPlaterz")
       .collection("requested");
+
+    app.post("/jwt", async (req, res) => {
+      try {
+        const userEmail = req.body;
+        const getToken = jwt.sign(userEmail, process.env.ACCESS_TOKEN, {
+          expiresIn: "3d",
+        });
+        res
+          .cookie("token", getToken, {
+            httpOnly: true,
+            secure: true,
+            sameSite: "none",
+          })
+          .send({ success: true });
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
+    app.post("/logout", async (req, res) => {
+      try {
+        res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+      } catch (err) {
+        console.log(err);
+      }
+    });
 
     app.get("/allFoods", async (req, res) => {
       try {
@@ -69,8 +120,11 @@ async function run() {
       }
     });
 
-    app.get("/myFoods", async (req, res) => {
+    app.get("/myFoods", gateMan, async (req, res) => {
       try {
+        if (req.decodedUser.email !== req.query?.email) {
+          return res.status(403).send({ message: "Forbidden access" });
+        }
         let query = {};
         if (req.query?.email) {
           query = { donator_email: req.query.email };
@@ -93,10 +147,12 @@ async function run() {
       }
     });
 
-    app.put("/update-food/:id", async (req, res) => {
+    app.put("/update-food/:id/:email", gateMan, async (req, res) => {
       try {
+        if (req.decodedUser.email !== req.params?.email) {
+          return res.status(403).send({ message: "Forbidden access" });
+        }
         const filter = { _id: new ObjectId(req.params?.id) };
-        const options = { upsert: true };
         const updatedFoodData = req.body;
         const updated = {
           $set: {
@@ -111,7 +167,9 @@ async function run() {
             food_status: updatedFoodData.food_status,
           },
         };
-        const result = await foodCollection.updateOne(filter, updated, options);
+        const result = await foodCollection.updateOne(filter, updated, {
+          upsert: true,
+        });
         res.send(result);
       } catch (err) {
         console.log(err);
@@ -128,8 +186,11 @@ async function run() {
       }
     });
 
-    app.get("/my-requested", async (req, res) => {
+    app.get("/my-requested", gateMan, async (req, res) => {
       try {
+        if (req.decodedUser.email !== req.query?.email) {
+          return res.status(403).send({ message: "Forbidden access" });
+        }
         let query = {};
         if (req.query?.email) {
           query = { user_email: req.query.email };
