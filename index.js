@@ -54,21 +54,19 @@ async function run() {
     // await client.connect();
 
     const foodCollection = client.db("mealPlaterz").collection("foods");
-    const requestedCollection = client
-      .db("mealPlaterz")
-      .collection("requested");
+    const requestedCollection = client.db("mealPlaterz").collection("request");
 
     app.post("/jwt", async (req, res) => {
       try {
         const userEmail = req.body;
         const getToken = jwt.sign(userEmail, process.env.ACCESS_TOKEN, {
-          expiresIn: "3d",
+          expiresIn: "7d",
         });
         res
           .cookie("token", getToken, {
             httpOnly: true,
-            secure: true,
-            sameSite: "none",
+            secure: process.env.NODE_ENV === "production",
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
           })
           .send({ success: true });
       } catch (err) {
@@ -78,7 +76,13 @@ async function run() {
 
     app.post("/logout", async (req, res) => {
       try {
-        res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+        res
+          .clearCookie("token", {
+            maxAge: 0,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+          })
+          .send({ success: true });
       } catch (err) {
         console.log(err);
       }
@@ -136,10 +140,12 @@ async function run() {
       }
     });
 
-    app.delete("/delete-food/:id", async (req, res) => {
+    app.delete("/delete-food/:email/:id", gateMan, async (req, res) => {
       try {
-        const id = req.params.id;
-        const query = { _id: new ObjectId(id) };
+        if (req.decodedUser.email !== req.params?.email) {
+          return res.status(403).send({ message: "Forbidden access" });
+        }
+        const query = { _id: new ObjectId(req.params?.id) };
         const result = await foodCollection.deleteOne(query);
         res.send(result);
       } catch (err) {
@@ -273,10 +279,12 @@ async function run() {
       }
     });
 
-    app.delete("/my-request/:id", async (req, res) => {
+    app.delete("/my-request/:email/:id", gateMan, async (req, res) => {
       try {
-        const idx = req.params.id;
-        const query = { _id: new ObjectId(idx) };
+        if (req.decodedUser.email !== req.params?.email) {
+          return res.status(403).send({ message: "Forbidden access" });
+        }
+        const query = { _id: new ObjectId(req.params.id) };
         const result = await requestedCollection.deleteOne(query);
         res.send(result);
       } catch (err) {
@@ -298,7 +306,7 @@ run().catch(console.dir);
 // mongo code end
 
 app.get("/", (req, res) => {
-  res.send("MEAL RUNNING SUCCESSFULLY");
+  res.send("FIND YOUR FOOD");
 });
 
 app.listen(port, () => {
