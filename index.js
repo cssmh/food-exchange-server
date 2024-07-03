@@ -54,7 +54,7 @@ async function run() {
     // await client.connect();
 
     const foodCollection = client.db("mealPlaterz").collection("foods");
-    const requestedCollection = client.db("mealPlaterz").collection("request");
+    const requestCollection = client.db("mealPlaterz").collection("request");
 
     app.post("/jwt", async (req, res) => {
       try {
@@ -74,7 +74,7 @@ async function run() {
       }
     });
 
-    app.post("/logout", async (req, res) => {
+    app.get("/logout", async (req, res) => {
       try {
         res
           .clearCookie("token", {
@@ -92,12 +92,20 @@ async function run() {
       try {
         const page = parseInt(req.query?.page);
         const limit = parseInt(req.query?.limit);
+        const searchTerm = req.query?.search || "";
         const skipIndex = (page - 1) * limit;
 
-        const cursor = foodCollection.find().skip(skipIndex).limit(limit);
+        const query = {
+          $or: [
+            { food_name: { $regex: searchTerm, $options: "i" } },
+            { pickup_location: { $regex: searchTerm, $options: "i" } },
+          ],
+        };
+        const totalFoods = (await foodCollection.countDocuments(query)) || 0;
+        const totalPages = Math.ceil(totalFoods / limit) || 0;
+        const cursor = foodCollection.find(query).skip(skipIndex).limit(limit);
         const result = await cursor.toArray();
-        const totalFoods = await foodCollection.countDocuments();
-        res.send({ totalFoods, result });
+        res.send({ totalPages, totalFoods, result });
       } catch (err) {
         console.log(err);
       }
@@ -115,25 +123,8 @@ async function run() {
 
     app.get("/food/:id", async (req, res) => {
       try {
-        const idx = req.params.id;
-        const query = { _id: new ObjectId(idx) };
+        const query = { _id: new ObjectId(req.params?.id) };
         const result = await foodCollection.findOne(query);
-        res.send(result);
-      } catch (err) {
-        console.log(err);
-      }
-    });
-
-    app.get("/myFoods", gateMan, async (req, res) => {
-      try {
-        if (req.decodedUser.email !== req.query?.email) {
-          return res.status(403).send({ message: "Forbidden access" });
-        }
-        let query = {};
-        if (req.query?.email) {
-          query = { donator_email: req.query.email };
-        }
-        const result = await foodCollection.find(query).toArray();
         res.send(result);
       } catch (err) {
         console.log(err);
@@ -185,7 +176,7 @@ async function run() {
     app.post("/add-request", async (req, res) => {
       try {
         const requestedData = req.body;
-        const result = await requestedCollection.insertOne(requestedData);
+        const result = await requestCollection.insertOne(requestedData);
         res.send(result);
       } catch (err) {
         console.log(err);
@@ -201,21 +192,24 @@ async function run() {
         if (req.query?.email) {
           query = { user_email: req.query.email };
         }
-        const result = await requestedCollection.find(query).toArray();
+        const result = await requestCollection.find(query).toArray();
         res.send(result);
       } catch (err) {
         console.log(err);
       }
     });
 
-    app.get("/pending-request/:id", async (req, res) => {
+    app.get("/pending-request/:id/:email", gateMan, async (req, res) => {
       try {
+        if (req.decodedUser.email !== req.params?.email) {
+          return res.status(403).send({ message: "Forbidden access" });
+        }
         const idx = req.params.id;
         let query = {};
         if (idx) {
           query = { food_id: idx };
         }
-        const result = await requestedCollection.find(query).toArray();
+        const result = await requestCollection.find(query).toArray();
         res.send(result);
       } catch (err) {
         console.log(err);
@@ -233,7 +227,7 @@ async function run() {
             status: updateStatus.newStatus,
           },
         };
-        const result = await requestedCollection.updateOne(
+        const result = await requestCollection.updateOne(
           filter,
           updated,
           options
@@ -249,10 +243,10 @@ async function run() {
         const filter = { _id: new ObjectId(req.params?.id) };
         const updated = {
           $set: {
-            delivered_at: req.body.todayDateTime,
+            delivered_at: req.body?.todayDateTime,
           },
         };
-        const result = await requestedCollection.updateOne(filter, updated, {
+        const result = await requestCollection.updateOne(filter, updated, {
           upsert: true,
         });
         res.send(result);
@@ -263,13 +257,11 @@ async function run() {
 
     app.put("/food-status/:id", async (req, res) => {
       try {
-        const idx = req.params.id;
-        const filter = { _id: new ObjectId(idx) };
+        const filter = { _id: new ObjectId(req.params?.id) };
         const options = { upsert: true };
-        const updatedStatus = req.body;
         const updated = {
           $set: {
-            food_status: updatedStatus.foodStatus,
+            food_status: req.body?.foodStatus,
           },
         };
         const result = await foodCollection.updateOne(filter, updated, options);
@@ -285,7 +277,7 @@ async function run() {
           return res.status(403).send({ message: "Forbidden access" });
         }
         const query = { _id: new ObjectId(req.params.id) };
-        const result = await requestedCollection.deleteOne(query);
+        const result = await requestCollection.deleteOne(query);
         res.send(result);
       } catch (err) {
         console.log(err);
