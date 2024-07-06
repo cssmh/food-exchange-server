@@ -10,7 +10,6 @@ const port = process.env.PORT || 5000;
 app.use(
   cors({
     origin: [
-      "http://localhost:5173",
       "https://foodshare-3bbc0.web.app",
       "https://mealplaterz.netlify.app",
     ],
@@ -106,6 +105,19 @@ async function run() {
         const cursor = foodCollection.find(query).skip(skipIndex).limit(limit);
         const result = await cursor.toArray();
         res.send({ totalPages, totalFoods, result });
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
+    app.get("/featured-foods", async (req, res) => {
+      try {
+        const result = await foodCollection
+          .find()
+          .sort({ food_quantity: -1 })
+          .limit(8)
+          .toArray();
+        res.send(result);
       } catch (err) {
         console.log(err);
       }
@@ -285,10 +297,10 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
