@@ -54,6 +54,7 @@ async function run() {
 
     const foodCollection = client.db("mealPlaterz").collection("foods");
     const requestCollection = client.db("mealPlaterz").collection("request");
+    const reviewCollection = client.db("mealPlaterz").collection("reviews");
 
     app.post("/jwt", async (req, res) => {
       try {
@@ -102,11 +103,23 @@ async function run() {
         };
         const totalFoods = (await foodCollection.countDocuments(query)) || 0;
         const totalPages = Math.ceil(totalFoods / limit) || 0;
-        const cursor = foodCollection.find(query).skip(skipIndex).limit(limit);
+
+        const cursor = foodCollection
+          .find(query)
+          .sort({
+            expiration_date: 1,
+            expiration_time: 1,
+          })
+          .skip(skipIndex)
+          .limit(limit);
+
         const result = await cursor.toArray();
         res.send({ totalPages, totalFoods, result });
       } catch (err) {
         console.log(err);
+        res
+          .status(500)
+          .send({ error: "An error occurred while fetching foods." });
       }
     });
 
@@ -162,18 +175,18 @@ async function run() {
           return res.status(403).send({ message: "Forbidden access" });
         }
         const filter = { _id: new ObjectId(req.params?.id) };
-        const updatedFoodData = req.body;
+        const updatedDocs = req.body;
         const updated = {
           $set: {
-            food_name: updatedFoodData.food_name,
-            food_image: updatedFoodData.food_image,
-            food_quantity: updatedFoodData.food_quantity,
-            donator_phone: updatedFoodData.donator_phone,
-            expired_date: updatedFoodData.expired_date,
-            expired_time: updatedFoodData.expired_time,
-            pickup_location: updatedFoodData.pickup_location,
-            additional_notes: updatedFoodData.additional_notes,
-            food_status: updatedFoodData.food_status,
+            food_name: updatedDocs.food_name,
+            food_image: updatedDocs.food_image,
+            food_quantity: updatedDocs.food_quantity,
+            donator_phone: updatedDocs.donator_phone,
+            expiration_date: updatedDocs.expiration_date,
+            expiration_time: updatedDocs.expiration_time,
+            pickup_location: updatedDocs.pickup_location,
+            additional_notes: updatedDocs.additional_notes,
+            food_status: updatedDocs.food_status,
           },
         };
         const result = await foodCollection.updateOne(filter, updated, {
@@ -250,12 +263,32 @@ async function run() {
       }
     });
 
-    app.patch("/add-time/:id", async (req, res) => {
+    app.get("/unavailable-ids", gateMan, async (req, res) => {
+      try {
+        if (req.decodedUser?.email !== req.query?.email) {
+          return res.status(403).send({ message: "Forbidden access" });
+        }
+        const query = {
+          food_status: "Unavailable",
+          donator_email: req.query?.email,
+        };
+        const options = {
+          projection: { _id: 1 },
+        };
+        const cursor = foodCollection.find(query, options);
+        const result = await cursor.toArray();
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
+    app.put("/add-time/:id", async (req, res) => {
       try {
         const filter = { _id: new ObjectId(req.params?.id) };
         const updated = {
           $set: {
-            delivered_at: req.body?.todayDateTime,
+            delivered_date: req.body?.todayDateTime,
           },
         };
         const result = await requestCollection.updateOne(filter, updated, {
