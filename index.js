@@ -88,6 +88,31 @@ async function run() {
       }
     });
 
+    app.post("/add-review", gateMan, async (req, res) => {
+      try {
+        const email = req.decodedUser.email;
+        const deliveredReq = await requestCollection
+          .find({
+            $or: [{ user_email: email }, { donator_email: email }],
+            status: "Delivered",
+          })
+          .toArray();
+        const existingReview = await reviewCollection.findOne({
+          email: email,
+        });
+
+        if (!deliveredReq || existingReview) {
+          return res.status(404).send({ message: "Not authorized" });
+        }
+
+        const reviewData = req.body;
+        const result = await reviewCollection.insertOne(reviewData);
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
     app.get("/allFoods", async (req, res) => {
       try {
         const page = parseInt(req.query?.page);
