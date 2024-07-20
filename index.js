@@ -10,6 +10,7 @@ const port = process.env.PORT || 5000;
 app.use(
   cors({
     origin: [
+      "http://localhost:5173",
       "https://foodshare-3bbc0.web.app",
       "https://mealplaterz.netlify.app",
     ],
@@ -113,6 +114,35 @@ async function run() {
       }
     });
 
+    app.delete("/review", gateMan, async (req, res) => {
+      try {
+        if (req.decodedUser.email !== req.query?.email) {
+          return res.status(403).send({ message: "Forbidden access" });
+        }
+        const query = { _id: new ObjectId(req.query?.id) };
+        const result = await reviewCollection.deleteOne(query);
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
+    app.get("/all-reviews", async (req, res) => {
+      try {
+        const limit = parseInt(req.query?.limit);
+        const sortReviews = req.query?.sort === "true";
+        let query = reviewCollection.find().limit(limit);
+
+        if (sortReviews) {
+          query = query.sort({ _id: -1 });
+        }
+        const result = await query.toArray();
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
     app.get("/allFoods", async (req, res) => {
       try {
         const page = parseInt(req.query?.page);
@@ -181,6 +211,39 @@ async function run() {
       }
     });
 
+    app.get("/myFoods", gateMan, async (req, res) => {
+      try {
+        if (req.decodedUser.email !== req.query?.email) {
+          return res.status(403).send({ message: "Forbidden access" });
+        }
+
+        let query = {};
+        if (req.query?.email) {
+          query = { donator_email: req.query.email };
+        }
+        const foodItems = await foodCollection.find(query).toArray();
+        const myIds = foodItems.map((item) => item._id.toString());
+        // Create an object to store the count for each food item
+        const counts = {};
+        for (const id of myIds) {
+          const count = await requestCollection.countDocuments({
+            food_id: id,
+          });
+          counts[id] = count;
+        }
+        // Add the count to each food item
+        const resultWithCounts = foodItems.map((item) => {
+          return {
+            ...item,
+            requestCount: counts[item._id.toString()] || 0,
+          };
+        });
+        res.send(resultWithCounts);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
     app.delete("/delete-food/:email/:id", gateMan, async (req, res) => {
       try {
         if (req.decodedUser.email !== req.params?.email) {
@@ -227,6 +290,26 @@ async function run() {
       try {
         const requestedData = req.body;
         const result = await requestCollection.insertOne(requestedData);
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
+    app.put("/add-review/:id/:email", gateMan, async (req, res) => {
+      try {
+        if (req.decodedUser.email !== req.params?.email) {
+          return res.status(403).send({ message: "Forbidden access" });
+        }
+        const filter = { _id: new ObjectId(req.params?.id) };
+        const updatedDoc = {
+          $set: {
+            user_review: req.body?.review,
+          },
+        };
+        const result = await foodCollection.updateOne(filter, updatedDoc, {
+          upsert: true,
+        });
         res.send(result);
       } catch (err) {
         console.log(err);
@@ -355,10 +438,10 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    // await client.db("admin").command({ ping: 1 });
-    // console.log(
-    //   "Pinged your deployment. You successfully connected to MongoDB!"
-    // );
+    await client.db("admin").command({ ping: 1 });
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!"
+    );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
