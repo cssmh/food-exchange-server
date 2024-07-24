@@ -161,6 +161,22 @@ async function run() {
       }
     });
 
+    app.get("/all-reviews", async (req, res) => {
+      try {
+        const limit = parseInt(req.query?.limit);
+        const sortReviews = req.query?.sort === "true";
+        let query = reviewCollection.find().limit(limit);
+
+        if (sortReviews) {
+          query = query.sort({ _id: -1 });
+        }
+        const result = await query.toArray();
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
     app.get("/featured-foods", async (req, res) => {
       try {
         const result = await foodCollection
