@@ -210,19 +210,6 @@ async function run() {
       }
     });
 
-    app.delete("/delete-food/:email/:id", gateMan, async (req, res) => {
-      try {
-        if (req.decodedUser.email !== req.params?.email) {
-          return res.status(403).send({ message: "Forbidden access" });
-        }
-        const query = { _id: new ObjectId(req.params?.id) };
-        const result = await foodCollection.deleteOne(query);
-        res.send(result);
-      } catch (err) {
-        console.log(err);
-      }
-    });
-
     app.put("/update-food/:id/:email", gateMan, async (req, res) => {
       try {
         if (req.decodedUser.email !== req.params?.email) {
@@ -245,6 +232,16 @@ async function run() {
           },
         };
         const result = await foodCollection.updateOne(filter, updated, options);
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
+    app.post("/add-request", async (req, res) => {
+      try {
+        const requestedData = req.body;
+        const result = await requestCollection.insertOne(requestedData);
         res.send(result);
       } catch (err) {
         console.log(err);
