@@ -248,6 +248,26 @@ async function run() {
       }
     });
 
+    app.put("/add-review/:id/:email", gateMan, async (req, res) => {
+      try {
+        if (req.decodedUser.email !== req.params?.email) {
+          return res.status(403).send({ message: "Forbidden access" });
+        }
+        const filter = { _id: new ObjectId(req.params?.id) };
+        const updatedDoc = {
+          $set: {
+            user_review: req.body?.review,
+          },
+        };
+        const result = await foodCollection.updateOne(filter, updatedDoc, {
+          upsert: true,
+        });
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
     app.get("/my-requested", gateMan, async (req, res) => {
       try {
         if (req.decodedUser.email !== req.query?.email) {
