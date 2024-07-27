@@ -210,6 +210,39 @@ async function run() {
       }
     });
 
+    app.get("/myFoods", gateMan, async (req, res) => {
+      try {
+        if (req.decodedUser.email !== req.query?.email) {
+          return res.status(403).send({ message: "Forbidden access" });
+        }
+
+        let query = {};
+        if (req.query?.email) {
+          query = { donator_email: req.query.email };
+        }
+        const foodItems = await foodCollection.find(query).toArray();
+        const myIds = foodItems.map((item) => item._id.toString());
+        // Create an object to store the count for each food item
+        const counts = {};
+        for (const id of myIds) {
+          const count = await requestCollection.countDocuments({
+            food_id: id,
+          });
+          counts[id] = count;
+        }
+        // Add the count to each food item
+        const resultWithCounts = foodItems.map((item) => {
+          return {
+            ...item,
+            requestCount: counts[item._id.toString()] || 0,
+          };
+        });
+        res.send(resultWithCounts);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
     app.put("/update-food/:id/:email", gateMan, async (req, res) => {
       try {
         if (req.decodedUser.email !== req.params?.email) {
