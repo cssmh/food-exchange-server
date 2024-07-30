@@ -125,19 +125,24 @@ async function run() {
 
     app.post("/add-review", gateMan, async (req, res) => {
       try {
-        const email = req.decodedUser.email;
+        const email = req.decodedUser?.email;
         const deliveredReq = await requestCollection
           .find({
             $or: [{ user_email: email }, { donator_email: email }],
             status: "Delivered",
           })
           .toArray();
-        const existingReview = await reviewCollection.findOne({
-          email: email,
-        });
 
-        if (!deliveredReq || existingReview) {
-          return res.status(404).send({ message: "Not authorized" });
+        if (!deliveredReq.length) {
+          return res
+            .status(400)
+            .send({ message: "Complete at least one food handover first" });
+        }
+
+        // Check if the user has already added a review
+        const existingReview = await reviewCollection.findOne({ email });
+        if (existingReview) {
+          return res.status(400).send({ message: "Review already added" });
         }
 
         const reviewData = req.body;
