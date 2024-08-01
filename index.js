@@ -248,6 +248,40 @@ async function run() {
       }
     });
 
+    app.put("/my-all-foods/:email", gateMan, async (req, res) => {
+      try {
+        if (req.decodedUser?.email !== req.params?.email) {
+          return res.status(403).send({ message: "Forbidden access" });
+        }
+        const filter = {
+          donator_email: req.params?.email,
+        };
+        const updatedDocs = {
+          $set: {
+            donator_name: req.body.name,
+            donator_image: req.body.photo,
+          },
+        };
+        const result = await foodCollection.updateMany(filter, updatedDocs);
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
+    app.delete("/delete-food/:email/:id", gateMan, async (req, res) => {
+      try {
+        if (req.decodedUser.email !== req.params?.email) {
+          return res.status(403).send({ message: "Forbidden access" });
+        }
+        const query = { _id: new ObjectId(req.params?.id) };
+        const result = await foodCollection.deleteOne(query);
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
     app.put("/update-food/:id/:email", gateMan, async (req, res) => {
       try {
         if (req.decodedUser.email !== req.params?.email) {
