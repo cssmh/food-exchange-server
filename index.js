@@ -463,6 +463,21 @@ async function run() {
       }
     });
 
+    app.put("/add-user", async (req, res) => {
+      try {
+        const user = req.body;
+        const query = { email: user.email.toLowerCase() };
+        const existingUser = await userCollection.findOne(query);
+        if (existingUser) {
+          return;
+        }
+        const result = await userCollection.insertOne(user);
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+    
     app.post("/create-payment-intent", async (req, res) => {
       try {
         const { price } = req.body;
