@@ -5,6 +5,7 @@ const cookieParser = require("cookie-parser");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const app = express();
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 const port = process.env.PORT || 5000;
 
 app.use(
@@ -54,6 +55,7 @@ async function run() {
 
     const foodCollection = client.db("mealPlaterz").collection("foods");
     const requestCollection = client.db("mealPlaterz").collection("request");
+    const userCollection = client.db("mealPlaterz").collection("users");
     const reviewCollection = client.db("mealPlaterz").collection("reviews");
 
     app.post("/jwt", async (req, res) => {
@@ -461,8 +463,26 @@ async function run() {
       }
     });
 
+    app.post("/create-payment-intent", async (req, res) => {
+      try {
+        const { price } = req.body;
+        const amount = parseInt(price * 100);
+
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: amount,
+          currency: "usd",
+          payment_method_types: ["card"],
+        });
+        res.send({
+          clientSecret: paymentIntent.client_secret,
+        });
+      } catch (error) {
+        console.log(err);
+      }
+    });
+
     // Send a ping to confirm a successful connection
-    // await client.db("admin").command({ ping: 1 });
+    await client.db("admin").command({ ping: 1 });
     // console.log(
     //   "Pinged your deployment. You successfully connected to MongoDB!"
     // );
