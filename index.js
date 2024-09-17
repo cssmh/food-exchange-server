@@ -11,6 +11,7 @@ const port = process.env.PORT || 5000;
 app.use(
   cors({
     origin: [
+      "http://localhost:5173",
       "https://foodshare-3bbc0.web.app",
       "https://mealplaterz.netlify.app",
     ],
@@ -19,6 +20,25 @@ app.use(
 );
 app.use(express.json());
 app.use(cookieParser());
+
+// Create a MongoClient with a MongoClientOptions object to set the Stable API version
+const client = new MongoClient(process.env.URI, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  },
+  connectTimeoutMS: 10000,
+});
+
+// Event listeners for connection
+client.connect((err) => {
+  if (err) {
+    console.error("Failed to connect to MongoDB", err);
+    return;
+  }
+  console.log("Connected to MongoDB");
+});
 
 const gateMan = async (req, res, next) => {
   const token = req?.cookies?.token;
@@ -36,22 +56,10 @@ const gateMan = async (req, res, next) => {
   });
 };
 
-// mongo code
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.vvrohrj.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
-
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
-const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  },
-});
-
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    // await client.connect();
+    // client.connect();
 
     const foodCollection = client.db("mealPlaterz").collection("foods");
     const requestCollection = client.db("mealPlaterz").collection("request");
@@ -477,7 +485,31 @@ async function run() {
         console.log(err);
       }
     });
-    
+
+    app.patch("/add-user-membership/:email", gateMan, async (req, res) => {
+      try {
+        if (req.decodedUser.email !== req.params?.email) {
+          return res.status(403).send({ message: "Forbidden access" });
+        }
+        const { email } = req.params;
+        const user = await userCollection.findOne({ email });
+        if (!user) {
+          return res.status(404).send({ message: "User not found" });
+        }
+
+        const updatedDocs = {
+          $set: {
+            premium_date: req.body.premium_date,
+            paymentIntent_Id: req.body.paymentIntent_Id,
+          },
+        };
+        const result = await userCollection.updateOne({ email }, updatedDocs);
+        res.send(result);
+      } catch (error) {
+        console.log(err);
+      }
+    });
+
     app.post("/create-payment-intent", async (req, res) => {
       try {
         const { price } = req.body;
@@ -498,9 +530,7 @@ async function run() {
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
-    // console.log(
-    //   "Pinged your deployment. You successfully connected to MongoDB!"
-    // );
+    console.log("Pinged your deployment.Successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
