@@ -486,6 +486,19 @@ async function run() {
       }
     });
 
+    app.get("/user/:email", gateMan, async (req, res) => {
+      try {
+        if (req.decodedUser.email !== req.params?.email) {
+          return res.status(403).send({ message: "Forbidden access" });
+        }
+        const email = req.params.email;
+        const result = await userCollection.findOne({ email });
+        res.send(result);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
     app.patch("/add-user-membership/:email", gateMan, async (req, res) => {
       try {
         if (req.decodedUser.email !== req.params?.email) {
