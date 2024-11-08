@@ -6,7 +6,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const app = express();
 const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
-const port = process.env.PORT || 5000;
+const port = 5000;
 
 app.use(
   cors({
@@ -28,7 +28,6 @@ const client = new MongoClient(process.env.URI, {
     strict: true,
     deprecationErrors: true,
   },
-  connectTimeoutMS: 10000,
 });
 
 // Event listeners for connection
@@ -178,9 +177,8 @@ async function run() {
 
     app.get("/all-reviews", async (req, res) => {
       try {
-        const limit = parseInt(req.query?.limit);
         const sortReviews = req.query?.sort === "true";
-        let query = reviewCollection.find().limit(limit);
+        let query = reviewCollection.find();
 
         if (sortReviews) {
           query = query.sort({ _id: -1 });
@@ -553,7 +551,7 @@ run().catch(console.dir);
 // mongo code end
 
 app.get("/", (req, res) => {
-  res.send("FIND YOUR FOOD");
+  res.send("Food Sharing to Reduce Waste");
 });
 
 app.listen(port, () => {
