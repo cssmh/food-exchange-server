@@ -21,7 +21,7 @@ app.use(cookieParser());
 app.use(router);
 
 app.get("/", (req, res) => {
-  res.send("Welcome to Mealplaterz food server!");
+  res.send("Welcome to mealplaterz food server!");
 });
 
 app.listen(port, () => {

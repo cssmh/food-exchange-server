@@ -6,9 +6,11 @@ const addUser = async (req, res) => {
     const user = req.body;
     const query = { email: user.email.toLowerCase() };
     const existingUser = await userCollection.findOne(query);
+
     if (existingUser) {
-      return;
+      return res.status(409).send({ message: "User already exists" });
     }
+
     const result = await userCollection.insertOne(user);
     res.send(result);
   } catch (err) {
@@ -18,8 +20,11 @@ const addUser = async (req, res) => {
 
 const getUser = async (req, res) => {
   try {
+    if (!req.params?.email) {
+      return res.status(402).send({ message: "No user Found" });
+    }
     if (req.decodedUser.email !== req.params?.email) {
-      return res.status(403).send({ message: "Forbidden access" });
+      return res.status(402).send({ message: "Forbidden access" });
     }
     const email = req.params.email;
     const result = await userCollection.findOne({ email });

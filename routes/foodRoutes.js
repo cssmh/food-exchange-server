@@ -16,6 +16,7 @@ const {
   addReview,
   deleteReview,
   getAllReview,
+  getDashboardData,
 } = require("../controllers/reviewFood");
 const { addFood, deleteAFood, addRequest } = require("../controllers/postFood");
 const {
@@ -44,7 +45,7 @@ router.get("/pending-request/:id/:email", gateMan, getMyPending);
 router.get("/unavailable-ids", gateMan, getUnavailableIds);
 
 // user setup
-router.put("/add-user", addUser);
+router.post("/add-user", addUser);
 router.get("/user/:email", gateMan, getUser);
 router.patch("/add-user-membership/:email", gateMan, addUserMembership);
 
@@ -52,6 +53,7 @@ router.patch("/add-user-membership/:email", gateMan, addUserMembership);
 router.post("/add-review", gateMan, addReview);
 router.delete("/review", gateMan, deleteReview);
 router.get("/all-reviews", getAllReview);
+router.get("/user-data", gateMan, getDashboardData);
 
 // post foods
 router.post("/add-food", addFood);
