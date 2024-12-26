@@ -3,10 +3,7 @@ require("dotenv").config();
 
 const addJwt = async (req, res) => {
   try {
-    const userEmail = req.body;
-    if (!userEmail) {
-      return res.status(400).json({ success: false, message: "Email is required." });
-    }
+    const userEmail = req?.body;
     const getToken = jwt.sign(userEmail, process.env.ACCESS_TOKEN, {
       expiresIn: "7d",
     });

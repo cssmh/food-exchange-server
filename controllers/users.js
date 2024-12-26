@@ -20,11 +20,8 @@ const addUser = async (req, res) => {
 
 const getUser = async (req, res) => {
   try {
-    if (!req.params?.email) {
-      return res.status(402).send({ message: "No user Found" });
-    }
-    if (req.decodedUser.email !== req.params?.email) {
-      return res.status(402).send({ message: "Forbidden access" });
+    if (req.decodedUser?.email !== req.params?.email) {
+      return res.status(401).send({ message: "Forbidden access" });
     }
     const email = req.params.email;
     const result = await userCollection.findOne({ email });
