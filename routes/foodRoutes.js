@@ -10,7 +10,7 @@ const {
   getUnavailableIds,
 } = require("../controllers/getFood");
 const { gateMan } = require("../middlewares/auth");
-const { addUser, getUser, addUserMembership } = require("../controllers/users");
+const { addUser, getUser, addUserMembership, getPremiumTime, updatePremiumTime, checkIsAdmin } = require("../controllers/users");
 const { paymentIntent } = require("../controllers/payment");
 const {
   addReview,
@@ -45,7 +45,8 @@ router.get("/pending-request/:id/:email", gateMan, getMyPending);
 router.get("/unavailable-ids", gateMan, getUnavailableIds);
 
 // user setup
-router.post("/add-user", addUser);
+router.put("/add-user", addUser);
+router.get("/isadmin/:email", gateMan, checkIsAdmin);
 router.get("/user/:email", gateMan, getUser);
 router.patch("/add-user-membership/:email", gateMan, addUserMembership);
 
@@ -71,5 +72,7 @@ router.delete("/my-request/:email/:id", gateMan, deleteMyRequest);
 
 // payment intent
 router.post("/create-payment-intent", paymentIntent);
+router.get("/premium-time", getPremiumTime);
+router.post("/update-premium-time", updatePremiumTime);
 
 module.exports = router;
