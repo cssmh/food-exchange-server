@@ -75,14 +75,8 @@ const getPremiumTime = async (req, res) => {
     const currentTime = Math.floor(Date.now() / 1000);
     const existingTime = await timerCollection.findOne({ key: "premiumEndTime" });
 
-    if (!existingTime || currentTime > existingTime.endTime) {
-      const newEndTime = currentTime + 15 * 24 * 3600;
-      await timerCollection.updateOne(
-        { key: "premiumEndTime" },
-        { $set: { endTime: newEndTime } },
-        { upsert: true }
-      );
-      return res.send({ endTime: newEndTime });
+    if (!existingTime || existingTime.endTime === 0 || currentTime > existingTime.endTime) {
+      return res.send({ endTime: 0 }); // Timer is stopped or expired
     }
 
     res.send({ endTime: existingTime.endTime });
@@ -94,14 +88,17 @@ const getPremiumTime = async (req, res) => {
 const updatePremiumTime = async (req, res) => {
   try {
     const { days } = req.body;
-    if (!days || isNaN(days) || days <= 0) {
+    if (isNaN(days) || days < 0) {
       return res.status(400).send({ message: "Invalid number of days" });
     }
 
-    const currentTime = Math.floor(Date.now() / 1000);
-    const newEndTime = currentTime + days * 24 * 3600;
+    let newEndTime = 0; // Default for stopping the timer
+    if (days > 0) {
+      const currentTime = Math.floor(Date.now() / 1000);
+      newEndTime = currentTime + days * 24 * 3600;
+    }
 
-    const result = await timerCollection.updateOne(
+    await timerCollection.updateOne(
       { key: "premiumEndTime" },
       { $set: { endTime: newEndTime } },
       { upsert: true }
