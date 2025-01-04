@@ -7,9 +7,19 @@ const addUser = async (req, res) => {
     const user = req.body;
     const query = { email: user.email.toLowerCase() };
 
-    const result = await userCollection.updateOne(query, {
-      $set: user
-    }, { upsert: true });
+    const existingUser = await userCollection.findOne(query);
+
+    if (existingUser && existingUser.role === "admin") {
+      user.role = "admin";
+    } else {
+      user.role = "user";
+    }
+
+    const result = await userCollection.updateOne(
+      query,
+      { $set: user },
+      { upsert: true }
+    );
 
     res.send(result);
   } catch (err) {
